@@ -1,10 +1,15 @@
 <?php
-session_start(); 
+spl_autoload_register(function ($class_name) {
+    $file = $class_name . '.php';
+    if (file_exists($file)) {
+        include $file;
+    }
+});
 
-require_once 'Book.php';
+$books = [];
 
-if (!isset($_SESSION['books'])) {
-    $_SESSION['books'] = [];
+if (isset($_COOKIE['books'])) {
+    $books = unserialize($_COOKIE['books']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -14,8 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
         if ($title && $author && $year) {
+            if (!class_exists('Book')) {
+                throw new Exception("Book class not found.");
+            }
             $book = new Book($title, $author, $year);
-            $_SESSION['books'][] = $book;
+            $books[] = $book;
+            setcookie('books', serialize($books), time() + 3600);
         } else {
             throw new Exception("Please input all fields");
         }
@@ -30,11 +39,13 @@ function displayBooks($books) {
         echo "<table border='1'>";
         echo "<tr><th>Title</th><th>Author</th><th>Year</th></tr>";
         foreach ($books as $book) {
-            echo "<tr>";
-            echo "<td>" . $book->getTitle() . "</td>";
-            echo "<td>" . $book->getAuthor() . "</td>";
-            echo "<td>" . $book->getYear() . "</td>";
-            echo "</tr>";
+            if ($book instanceof Book) {
+                echo "<tr>";
+                echo "<td>" . htmlspecialchars($book->getTitle()) . "</td>";
+                echo "<td>" . htmlspecialchars($book->getAuthor()) . "</td>";
+                echo "<td>" . htmlspecialchars($book->getYear()) . "</td>";
+                echo "</tr>";
+            }
         }
         echo "</table>";
     } else {
@@ -70,7 +81,7 @@ function displayBooks($books) {
 <hr>
 
 <?php
-displayBooks($_SESSION['books']);
+displayBooks($books);
 ?>
 
 </body>
